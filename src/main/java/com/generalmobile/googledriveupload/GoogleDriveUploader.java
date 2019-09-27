@@ -1,6 +1,10 @@
 package com.generalmobile.googledriveupload;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.drive.Drive;
 import com.google.jenkins.plugins.credentials.domains.DomainRequirementProvider;
 import com.google.jenkins.plugins.credentials.domains.RequiresDomain;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotCredentials;
@@ -18,8 +22,8 @@ import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
-import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Objects;
@@ -29,11 +33,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @RequiresDomain(value = DriveScopeRequirement.class)
 public final class GoogleDriveUploader extends Recorder {
 
+    public static final String APPLICATION_NAME = "Jenkins drive uploader";
     private final String credentialsId;
     private final String driveFolderName;
     private final String uploadFolder;
     private final String userMail;
+    private static HttpTransport httpTransport;
 
+    static {
+        try {
+            httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+    
     @DataBoundConstructor
     public GoogleDriveUploader(String credentialsId, String driveFolderName, String uploadFolder, String userMail) {
         this.credentialsId = checkNotNull(credentialsId);
@@ -76,9 +90,7 @@ public final class GoogleDriveUploader extends Recorder {
 
         try {
             listener.getLogger().println("Google Drive Uploading Plugin Started.");
-            GoogleRobotCredentials credentials = GoogleRobotCredentials.getById(getCredentialsId());
-            GoogleDriveManager driveManager = new GoogleDriveManager(authorize(credentials));
-
+            GoogleDriveManager driveManager = new GoogleDriveManager(getDriveService(), listener);
 
             String workspace = Objects.requireNonNull(build.getWorkspace()).getRemote();
 
@@ -90,7 +102,7 @@ public final class GoogleDriveUploader extends Recorder {
                 }
             }
             listener.getLogger().println("Uploading folder: " + workspace);
-            driveManager.uploadFolder(workspace, getDriveFolderName(), listener, userMail);
+            driveManager.uploadFolder(new File(workspace), getDriveFolderName(), userMail);
         } catch (GeneralSecurityException e) {
             build.setResult(Result.FAILURE);
             return false;
@@ -98,10 +110,18 @@ public final class GoogleDriveUploader extends Recorder {
 
         return true;
     }
+    
+    private Drive getDriveService() throws GeneralSecurityException {
+        return new Drive.Builder(httpTransport, new JacksonFactory(), getAuthorizeCredentials())
+            .setApplicationName(APPLICATION_NAME)
+            .build();
+    }
 
-    private Credential authorize(GoogleRobotCredentials credentials) throws GeneralSecurityException {
-        GoogleRobotCredentials googleRobotCredentials = credentials.forRemote(getRequirement());
-        return googleRobotCredentials.getGoogleCredential(getRequirement());
+    private Credential getAuthorizeCredentials() throws GeneralSecurityException {
+        return GoogleRobotCredentials
+            .getById(getCredentialsId())
+            .forRemote(getRequirement())
+            .getGoogleCredential(getRequirement());
     }
 
     private DriveScopeRequirement getRequirement() {
