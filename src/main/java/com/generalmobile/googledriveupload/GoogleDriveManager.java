@@ -10,12 +10,13 @@ import com.google.api.client.googleapis.media.MediaHttpUploaderProgressListener;
 import com.google.api.client.http.FileContent;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.jackson.JacksonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 import com.google.api.services.drive.model.Permission;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.BuildListener;
 
 import java.io.IOException;
@@ -62,6 +63,7 @@ class GoogleDriveManager {
         }
     }
 
+    @SuppressFBWarnings
     private void uploadFile(String copyTo, final java.io.File downloaded, final BuildListener listener) {
         try {
             if (downloaded != null && downloaded.isDirectory()) {
@@ -110,6 +112,9 @@ class GoogleDriveManager {
                                     break;
                                 case MEDIA_COMPLETE:
                                     listener.getLogger().println("Uploading finish " + downloaded.getPath());
+                                    break;
+                                default:
+                                    listener.error("Unexpected state : " + uploader.getUploadState().toString() + " for " + downloaded.getPath());
                                     break;
                             }
                         }
