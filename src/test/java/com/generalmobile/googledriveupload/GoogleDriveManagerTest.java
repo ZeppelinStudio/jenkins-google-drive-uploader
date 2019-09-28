@@ -9,57 +9,62 @@ package com.generalmobile.googledriveupload;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
-import com.google.common.base.Joiner;
 import hudson.model.BuildListener;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.util.LinkedList;
-import java.util.Queue;
+import java.io.IOException;
+import java.util.UUID;
+import java.util.logging.LogManager;
 
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.BatchCreateRequest;
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesCreateRequest;
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesListRequest;
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesUploadRequest;
 import static com.generalmobile.googledriveupload.GoogleDriveUploader.APPLICATION_NAME;
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class GoogleDriveManagerTest {
 
-    public static final String FOLDER_ID = "111111";
-    public static final String FOLDER_NAME = "testFolder";
-    public static final String FILE_ID = "222222";
-    public static final String PERMISSION_ID = "33333";
-
     private static final transient Logger logger = LoggerFactory.getLogger(GoogleDriveManagerTest.class);
-    DriveMockHttpTransport mockHttpTransport = new DriveMockHttpTransport();
-    ByteArrayOutputStream loggerOutput = new ByteArrayOutputStream();
-    Queue<Object[]> errors = new LinkedList<>();
-    private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
 
+    public static final String FOLDER_ID = UUID.randomUUID().toString();
+    public static final String FOLDER_NAME = "testFolder";
+    public static final String SUB_FOLDER_ID = UUID.randomUUID().toString();
+    public static final String FILE_ID = UUID.randomUUID().toString();
+    public static final String FILE_TYPE = "txt";
+    public static final String FILE_ID_2 = UUID.randomUUID().toString();
+    public static final String PERMISSION_ID = UUID.randomUUID().toString();
+    public static final String USER_EMAIL = "me@localtest.me";
+
+    private DriveMockHttpTransport mockHttpTransport = new DriveMockHttpTransport();
+    private MockBuildListenerHelper mockBuildListenerHelper = new MockBuildListenerHelper();
     private GoogleDriveManager googleDriveManager;
+
+    @Rule
+    public TestRule watcher = new TestWatcher() {
+        protected void starting(Description description) {
+            logger.info("Starting : {}", description.getMethodName());
+            logger.info("==============================================");
+        }
+    };
+
+    @BeforeClass
+    public static void setupLogger() throws IOException {
+        LogManager.getLogManager().readConfiguration(GoogleDriveManagerTest.class.getResourceAsStream("/logging.properties"));
+    }
 
     @Before
     public void setupDriveService() {
-
-        BuildListener mockBuildListener = mock(BuildListener.class);
-        when(mockBuildListener.getLogger()).thenReturn(new PrintStream(loggerOutput));
-        when(mockBuildListener.error(anyString())).thenAnswer(errorMockAnswer());
-        when(mockBuildListener.error(anyString(), any(Exception.class))).thenAnswer(errorMockAnswer());
-
+        BuildListener mockBuildListener = mockBuildListenerHelper.createMockBuildListener();
         Credential mockCredential = mock(Credential.class);
         googleDriveManager = new GoogleDriveManager(
             new Drive.Builder(mockHttpTransport, new JacksonFactory(), mockCredential)
@@ -68,107 +73,144 @@ public class GoogleDriveManagerTest {
             mockBuildListener);
     }
 
-    private Answer<PrintWriter> errorMockAnswer() {
-        return new Answer<PrintWriter>() {
-            @Override
-            public PrintWriter answer(InvocationOnMock invocation) throws Throwable {
-                Object[] args = invocation.getArguments();
-                errors.add(args);
-                return mock(PrintWriter.class);
-            }
-        };
-    }
-
     @Test
     public void uploadFolder_withWithoutSourceFile() {
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME));
-        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, "me@localtest.me"));
-        googleDriveManager.uploadFolder(null, "folder_to_upload", "me@localtest.me");
-        assertEquals(Joiner.on("\n").join(
+        // arrange
+        mockHttpTransport.mock(FilesListRequest.emptyList());   // Search for driveFolder 
+        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME)); // Create driveFolder 
+        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, USER_EMAIL));  // Send out permissions driveFolder 
+        // act
+        googleDriveManager.uploadFolder(null, "folder_to_upload", USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
             "userMail me@localtest.me",
-            "Write permissions set to Folder folder_to_upload for me@localtest.me",
-            ""), loggerOutput.toString());
-        assertTrue(errors.isEmpty());
+            "Write permissions set to Folder folder_to_upload for me@localtest.me");
+        mockBuildListenerHelper.assertNoErrors();  // TODO : should give error indication of invalid file
     }
 
     @Test
     public void uploadFolder_withExistingSourceFile() {
-        File fileToUpload = new File("pom.xml");
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME));
-        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, "me@localtest.me"));
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, "me@localtest.me");
-        assertEquals(Joiner.on("\n").join(
+        // arrange
+        File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
+        mockHttpTransport.mock(FilesListRequest.emptyList());  // Search for driveFolder 
+        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME)); // Create driveFolder 
+        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, USER_EMAIL)); // Send out permissions for driveFolder 
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for file in driveFolder
+        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE));  // create new Drive file 
+        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE)); // Upload file content
+        // act
+        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
             "userMail me@localtest.me",
             "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Start uploading " + fileToUpload.getName(),
-            "Finished uploading " + fileToUpload.getName(),
-            ""), loggerOutput.toString());
-        assertTrue(errors.isEmpty());
+            "Start uploading " + fileToUpload.getAbsolutePath(),
+            "Finished uploading " + fileToUpload.getAbsolutePath());
+        mockBuildListenerHelper.assertNoErrors();
     }
 
     @Test
     public void uploadFolder_withNoneExistingSourceFile() {
-        File fileToUpload = new File("invalid_file_name.txt");
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME));
-        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, "me@localtest.me"));
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, "me@localtest.me");
-        assertEquals(Joiner.on("\n").join(
+        // arrange
+        File subdir = new File(this.getClass().getClassLoader().getResource("subdir").getFile());
+        File fileToUpload = new File(subdir, "invalid_file_name.txt");
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for driveFolder 
+        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME)); // Create driveFolder 
+        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, USER_EMAIL)); // Send out permissions driveFolder 
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for file in driveFolder
+        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE));  // create new Drive file  
+        // act
+        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
             "userMail me@localtest.me",
             "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Start uploading " + fileToUpload.getName(),
-            ""), loggerOutput.toString());
-        assertEquals("invalid_file_name.txt (No such file or directory)", Joiner.on("\n").join(errors.remove()));
+            "Start uploading " + fileToUpload.getAbsolutePath());
+        mockBuildListenerHelper.assertErrors(fileToUpload.getAbsolutePath() + " (No such file or directory)");
     }
 
     @Test
     public void uploadFolder_withExistingFileAndExistDestFolder() {
-        File fileToUpload = new File("pom.xml");
-        mockHttpTransport.mock(FilesListRequest.findFolder(FOLDER_ID, FOLDER_NAME));
-        mockHttpTransport.mock(FilesListRequest.emptyList());
-        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, "me@localtest.me");
-        assertEquals(Joiner.on("\n").join(
+        // arrange
+        File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
+        mockHttpTransport.mock(FilesListRequest.findFolder(FOLDER_ID, FOLDER_NAME));  // Search for driveFolder 
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for file in driveFolder
+        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE)); // create new Drive file 
+        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE)); // Upload file content
+        // act
+        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
             "userMail me@localtest.me",
             "Found folder " + FOLDER_NAME,
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Start uploading " + fileToUpload.getName(),
-            "Finished uploading " + fileToUpload.getName(),
-            ""), loggerOutput.toString());
-        assertTrue(errors.isEmpty());
+            "Start uploading " + fileToUpload.getAbsolutePath(),
+            "Finished uploading " + fileToUpload.getAbsolutePath());
+        mockBuildListenerHelper.assertNoErrors();
     }
 
     @Test
     public void uploadFolder_withExistingFileAndExistDestFolderAndExistDestFile() {
-        File fileToUpload = new File("pom.xml");
-        mockHttpTransport.mock(FilesListRequest.findFolder(FOLDER_ID, FOLDER_NAME));
-        mockHttpTransport.mock(FilesListRequest.findFile(FILE_ID, fileToUpload.getName(), "xxx"));
-        mockHttpTransport.mock(FilesUploadRequest.initiateUpdateUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), "xxx"));
-        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, "me@localtest.me");
-        assertEquals(Joiner.on("\n").join(
+        // arrange
+        File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
+        mockHttpTransport.mock(FilesListRequest.findFolder(FOLDER_ID, FOLDER_NAME)); // Search for driveFolder 
+        mockHttpTransport.mock(FilesListRequest.findFile(FILE_ID, fileToUpload.getName(), FILE_TYPE)); // Search for file in driveFolder 
+        mockHttpTransport.mock(
+            FilesUploadRequest.initiateUpdateUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE));  // Update existing  Drive file (new version) 
+        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, fileToUpload.getName(), FILE_TYPE));  // Upload file content
+        // act
+        googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
             "userMail me@localtest.me",
             "Found folder " + FOLDER_NAME,
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Found File: " + fileToUpload.getName() + " (" + FILE_ID + ")",
             "Updating existing File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Start uploading " + fileToUpload.getName(),
-            "Finished uploading " + fileToUpload.getName(),
-            ""), loggerOutput.toString());
-        assertTrue(errors.isEmpty());
+            "Start uploading " + fileToUpload.getAbsolutePath(),
+            "Finished uploading " + fileToUpload.getAbsolutePath());
+        mockBuildListenerHelper.assertNoErrors();
+    }
+
+    @Test
+    public void uploadFolder_withExistingSourceDir() {
+        // arrange
+        File dirToUpload = new File(this.getClass().getClassLoader().getResource("subdir").getFile());
+        File file_1 = new File(dirToUpload, "test_file_1.txt");
+        File file_2 = new File(dirToUpload, "test_file_2.txt");
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for driveFolder 
+        mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME));  // Create driveFolder 
+        mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, USER_EMAIL)); // Send out permissions driveFolder 
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for subdir dir folder in driveFolder 
+        mockHttpTransport.mock(FilesCreateRequest.createFolder(SUB_FOLDER_ID, dirToUpload.getName())); // Create subdir dir folder in driveFolder 
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for file in driveFolder
+        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID, file_1.getName(), FILE_TYPE));  // create new Drive file 
+        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID, file_1.getName(), FILE_TYPE)); // Upload file content
+        mockHttpTransport.mock(FilesListRequest.emptyList()); // Search for 2nd file in driveFolder
+        mockHttpTransport.mock(FilesUploadRequest.initiateCreateUpload(FILE_ID_2, file_2.getName(), FILE_TYPE));  // create new Drive file 
+        mockHttpTransport.mock(FilesUploadRequest.resumeUpload(FILE_ID_2, file_2.getName(), FILE_TYPE)); // Upload file content   
+        // act
+        googleDriveManager.uploadFolder(dirToUpload, FOLDER_NAME, USER_EMAIL);
+        // assert
+        mockBuildListenerHelper.assertLoggingEqual(
+            "userMail me@localtest.me",
+            "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
+            "Searching for " + dirToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
+            "Creating new Folder " + dirToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
+            "Searching for " + file_1.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
+            "Creating new File " + file_1.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
+            "Start uploading " + file_1.getAbsolutePath(),
+            "Finished uploading " + file_1.getAbsolutePath(),
+            "Searching for " + file_2.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
+            "Creating new File " + file_2.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
+            "Start uploading " + file_2.getAbsolutePath(),
+            "Finished uploading " + file_2.getAbsolutePath());
+        mockBuildListenerHelper.assertNoErrors();
     }
 }
 

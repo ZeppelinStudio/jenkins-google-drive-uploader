@@ -64,8 +64,10 @@ public class DriveMockHttpTransport extends MockHttpTransport {
         }
         MockResponse mockResponse = mockedResponsesQueue.remove();
         requestCount++;
-        assertEquals("Request : "+  requestCount, mockResponse.expectedRequest.method, method);
-        assertTrue("Request : " +  requestCount + "\nactual : " + url + "\nexpected :" + mockResponse.expectedRequest.url, url.startsWith(mockResponse.expectedRequest.url));
+        String errormessage = "Request (" +  requestCount + ") :\nactual : " + method + " " + url + 
+            "\nexpected :" + mockResponse.expectedRequest.method + " " + mockResponse.expectedRequest.url; 
+        assertEquals(errormessage, mockResponse.expectedRequest.method, method);
+        assertTrue(errormessage, url.startsWith(mockResponse.expectedRequest.url));
         return new MockLowLevelHttpRequest() {
             @Override
             public LowLevelHttpResponse execute() {
@@ -146,8 +148,7 @@ public class DriveMockHttpTransport extends MockHttpTransport {
     static class FilesUploadRequest extends BaseMockRequest {
         static final MockRequest postRequest = new MockRequest("POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
         static final MockRequest patchRequest = new MockRequest("PATCH", "https://www.googleapis.com/upload/drive/v3/files/" + FILE_ID +"?addParents=" + FOLDER_ID + "&uploadType=resumable");
-        static final MockRequest putRequest = new MockRequest("PUT",
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=xa298sd_sdlkj2");
+        static final MockRequest putRequest = new MockRequest("PUT", "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=");
 
         static public MockResponse initiateCreateUpload(String id, String name, String type) {
             return createResponse(postRequest, () -> {
