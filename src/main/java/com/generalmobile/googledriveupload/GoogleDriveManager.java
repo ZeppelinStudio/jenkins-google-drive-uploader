@@ -43,7 +43,7 @@ class GoogleDriveManager extends ManagerBase {
                     .setPageToken(pageToken)
                     .execute();
                 for (File file : result.getFiles()) {
-                    listener.getLogger().printf("Found File: %s (%s)%n", file.getName(), file.getId());
+                    listener.getLogger().printf("Found %s (%s)%n", file.getName(), file.getId());
                     return Optional.of(file);
                 }
                 pageToken = result.getNextPageToken();
@@ -104,7 +104,6 @@ class GoogleDriveManager extends ManagerBase {
 
             Optional<File> destFolder = findDestFolderDrive(destFolderName);
             if (destFolder.isPresent()){
-                listener.getLogger().printf("Found folder %s (%s)%n", destFolder.get().getName(), destFolder.get().getId());
                 return destFolder.get();
             }
             File inserted = createNewFolder(Collections.singletonList("root"), Collections.emptyList(), destFolderName);
@@ -151,8 +150,6 @@ class GoogleDriveManager extends ManagerBase {
     }
     
     private  File createNewFolder(final List<String> parentNames, final List<String> parentIds, final String name){
-        listener.getLogger().printf("Creating new Folder %s in %s (%s)%n", 
-            name, Joiner.on(",").join(parentNames),  Joiner.on(",").join(parentIds));
         // Need to create the folder...
         File fileMetadata = new File();
         fileMetadata.setName(name);
@@ -163,13 +160,42 @@ class GoogleDriveManager extends ManagerBase {
                 .setSupportsTeamDrives(true)
                 .setFields("id, name, parents")
                 .execute();
-            listener.getLogger().printf("Created new folder %s (%s) in %s (%s) %n",
+            listener.getLogger().printf("Created new Folder %s (%s) in %s (%s)%n",
                 newFolder.getName(), newFolder.getId(), Joiner.on(",").join(parentNames),  Joiner.on(",").join(parentIds));
             return newFolder;
         } catch (IOException e) {
             listener.error("Error creating folder in Shared Drive", e);
         }
         return null;
+    }
+
+    public void cleanup(final String type, final List<String> names) {
+        try {
+            String pageToken = null;
+            do {
+                FileList result = drive.files().list()
+                    .setPageToken(pageToken)
+                    .execute();
+                List<com.google.api.services.drive.model.File> files = result.getFiles();
+                for (com.google.api.services.drive.model.File file : files) {
+                    if (file.getMimeType().equals(type) && names.contains(file.getName()) ) {
+                        deleteFile(file);
+                    }
+                }
+                pageToken = result.getNextPageToken();
+            } while (pageToken != null);
+        } catch (IOException e) {
+            listener.error("Error cleaning up files", e);
+        }
+    }
+
+    private void deleteFile(final com.google.api.services.drive.model.File file) {
+        try {
+            listener.getLogger().printf("Deleting %s (%s)%n", file.getName(), file.getId());
+            drive.files().delete(file.getId()).execute();
+        } catch (IOException e) {
+            listener.error("Error deleting file", e);
+        }
     }
 
 }

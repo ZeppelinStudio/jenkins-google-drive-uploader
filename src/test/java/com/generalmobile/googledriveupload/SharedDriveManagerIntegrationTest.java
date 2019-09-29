@@ -19,6 +19,7 @@ import hudson.model.BuildListener;
 import junit.GoogleDriveIntegrationTest;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -30,10 +31,12 @@ import org.jvnet.hudson.test.JenkinsRule;
 import java.io.File;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.LogManager;
 
 import static com.generalmobile.googledriveupload.GoogleDriveUploader.APPLICATION_NAME;
+import static com.generalmobile.googledriveupload.ManagerBase.GOOGLE_DRIVE_FOLDER_MIMETYPE;
 
 @Category(GoogleDriveIntegrationTest.class)
 @Ignore("Not for automatic test, only run manually after configuring integration_test.properties ")
@@ -73,6 +76,12 @@ public class SharedDriveManagerIntegrationTest {
                 .build(), 
             sharedDriveName,
             mockBuildListener);
+    }
+    
+    @After
+    public void cleanupDrive() {
+        googleSharedDriveManager.cleanup(GOOGLE_DRIVE_FOLDER_MIMETYPE, Arrays.asList("subdir", driveFolderName));
+        googleSharedDriveManager.cleanup("text/plain", Arrays.asList("test_file_1.txt", "test_file_2.txt"));
     }
 
     static private Credential createCredentaionFromGooglJsonFile() throws Exception {

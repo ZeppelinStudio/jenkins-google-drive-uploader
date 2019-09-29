@@ -19,6 +19,7 @@ import hudson.model.BuildListener;
 import junit.GoogleDriveIntegrationTest;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -26,16 +27,22 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.LogManager;
 
 import static com.generalmobile.googledriveupload.GoogleDriveUploader.APPLICATION_NAME;
+import static com.generalmobile.googledriveupload.ManagerBase.GOOGLE_DRIVE_FOLDER_MIMETYPE;
+
 @Category(GoogleDriveIntegrationTest.class)
 @Ignore("Not for automatic test, only run manually after configuring integration_test.properties ")
 public class GoogleDriveManagerIntegrationTest {
+    private static final transient Logger logger = LoggerFactory.getLogger(GoogleDriveManagerIntegrationTest.class);
 
     private MockBuildListenerHelper mockBuildListenerHelper = new MockBuildListenerHelper();
     private GoogleDriveManager googleDriveManager;
@@ -71,7 +78,13 @@ public class GoogleDriveManagerIntegrationTest {
                 .build(),
             mockBuildListener);
     }
-
+    
+    @After
+    public void cleanupDrive() {
+        googleDriveManager.cleanup(GOOGLE_DRIVE_FOLDER_MIMETYPE, Arrays.asList("subdir", driveFolderName));
+        googleDriveManager.cleanup("text/plain", Arrays.asList("test_file_1.txt", "test_file_2.txt"));
+    }
+    
     static private Credential createCredentaionFromGooglJsonFile() throws Exception {
         File jsonFile = new File(googleJsonFilePath);
         DiskFileItemFactory factory = new DiskFileItemFactory();

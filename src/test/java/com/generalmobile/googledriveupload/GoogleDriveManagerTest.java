@@ -80,11 +80,13 @@ public class GoogleDriveManagerTest {
         mockHttpTransport.mock(FilesCreateRequest.createFolder(FOLDER_ID, FOLDER_NAME)); // Create driveFolder 
         mockHttpTransport.mock(BatchCreateRequest.acceptedPermissions(PERMISSION_ID, USER_EMAIL));  // Send out permissions driveFolder 
         // act
-        googleDriveManager.uploadFolder(null, "folder_to_upload", USER_EMAIL);
+        googleDriveManager.uploadFolder(null, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Write permissions set to Folder folder_to_upload for me@localtest.me");
+            "userMail " + USER_EMAIL,
+            "Searching for " + FOLDER_NAME,
+            "Created new Folder " + FOLDER_NAME + " (" + FOLDER_ID + ") in root ()",
+            "Write permissions set to Folder " + FOLDER_NAME + " for " + USER_EMAIL);
         mockBuildListenerHelper.assertNoErrors();  // TODO : should give error indication of invalid file
     }
 
@@ -102,8 +104,10 @@ public class GoogleDriveManagerTest {
         googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
+            "userMail " + USER_EMAIL,
+            "Searching for "  + FOLDER_NAME,
+            "Created new Folder " + FOLDER_NAME + " (" + FOLDER_ID + ") in root ()",
+            "Write permissions set to Folder " + FOLDER_NAME + " for " + USER_EMAIL,
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Start uploading " + fileToUpload.getAbsolutePath(),
@@ -125,8 +129,10 @@ public class GoogleDriveManagerTest {
         googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
+            "userMail " + USER_EMAIL,
+            "Searching for "  + FOLDER_NAME,
+            "Created new Folder " + FOLDER_NAME + " (" + FOLDER_ID + ") in root ()",
+            "Write permissions set to Folder " + FOLDER_NAME + " for " + USER_EMAIL,
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Start uploading " + fileToUpload.getAbsolutePath());
@@ -145,8 +151,9 @@ public class GoogleDriveManagerTest {
         googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Found folder " + FOLDER_NAME,
+            "userMail " + USER_EMAIL,
+            "Searching for "  + FOLDER_NAME,
+            "Found " + FOLDER_NAME  + " (" + FOLDER_ID + ")",
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Start uploading " + fileToUpload.getAbsolutePath(),
@@ -167,10 +174,11 @@ public class GoogleDriveManagerTest {
         googleDriveManager.uploadFolder(fileToUpload, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Found folder " + FOLDER_NAME,
+            "userMail " + USER_EMAIL,
+            "Searching for "  + FOLDER_NAME,
+            "Found " + FOLDER_NAME+ " (" + FOLDER_ID + ")",
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Found File: " + fileToUpload.getName() + " (" + FILE_ID + ")",
+            "Found " + fileToUpload.getName() + " (" + FILE_ID + ")",
             "Updating existing File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Start uploading " + fileToUpload.getAbsolutePath(),
             "Finished uploading " + fileToUpload.getAbsolutePath());
@@ -198,10 +206,12 @@ public class GoogleDriveManagerTest {
         googleDriveManager.uploadFolder(dirToUpload, FOLDER_NAME, USER_EMAIL);
         // assert
         mockBuildListenerHelper.assertLoggingEqual(
-            "userMail me@localtest.me",
-            "Write permissions set to Folder " + FOLDER_NAME + " for me@localtest.me",
+            "userMail " + USER_EMAIL,
+            "Searching for "  + FOLDER_NAME,
+            "Created new Folder " + FOLDER_NAME + " (" + FOLDER_ID + ") in root ()",
+            "Write permissions set to Folder " + FOLDER_NAME + " for " + USER_EMAIL,
             "Searching for " + dirToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
-            "Creating new Folder " + dirToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
+            "Created new Folder " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ") in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Searching for " + file_1.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
             "Creating new File " + file_1.getName() + " in " + dirToUpload.getName() + " (" + SUB_FOLDER_ID + ")",
             "Start uploading " + file_1.getAbsolutePath(),

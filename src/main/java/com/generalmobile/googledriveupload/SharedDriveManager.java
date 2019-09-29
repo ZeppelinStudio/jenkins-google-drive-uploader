@@ -55,7 +55,7 @@ public class SharedDriveManager extends ManagerBase {
                     .setCorpora("drive")
                     .execute();
                 for (File file : result.getFiles()) {
-                    listener.getLogger().printf("Found File: %s (%s)%n", file.getName(), file.getId());
+                    listener.getLogger().printf("Found %s (%s)%n", file.getName(), file.getId());
                     return Optional.of(file);
                 }
                 pageToken = result.getNextPageToken();
@@ -122,7 +122,6 @@ public class SharedDriveManager extends ManagerBase {
     }
 
     private  File createNewFolder(final String parentName, String parentId, final String name){
-        listener.getLogger().printf("Creating new Folder %s in %s (%s)%n", name, parentName, parentId);
         // Need to create the folder...
         File fileMetadata = new File();
         fileMetadata.setName(name);
@@ -135,7 +134,7 @@ public class SharedDriveManager extends ManagerBase {
                 .setSupportsTeamDrives(true)
                 .setFields("id, name, parents")
                 .execute();
-            listener.getLogger().printf("Created new folder %s (%s) in %s (%s) %n",
+            listener.getLogger().printf("Created new Folder %s (%s) in %s (%s)%n",
                 newFolder.getName(), newFolder.getId(), parentName, parentId);
             return newFolder;
         } catch (IOException e) {
@@ -152,6 +151,42 @@ public class SharedDriveManager extends ManagerBase {
         fileMetadata.setMimeType(type);
         fileMetadata.setParents(parentIds);
         return fileMetadata;
+    }
+
+    public void cleanup(final String type, final List<String> names) {
+        try {
+            String pageToken = null;
+            do {
+                FileList result = drive.files().list()
+                    .setPageToken(pageToken)
+                    .setSupportsAllDrives(true)
+                    .setIncludeItemsFromAllDrives(true)
+                    .setTeamDriveId(teamDrive.getId())
+                    .setCorpora("drive")
+                    .execute();
+                List<File> files = result.getFiles();
+                for (File file : files) {
+                    if (file.getMimeType().equals(type) && names.contains(file.getName()) ) {
+                        deleteFile(file);
+                    }
+                }
+                pageToken = result.getNextPageToken();
+            } while (pageToken != null);
+        } catch (IOException e) {
+            listener.error("Error cleaning up files", e);
+        }
+    }
+
+    private void deleteFile(final com.google.api.services.drive.model.File file) {
+        try {
+            listener.getLogger().printf("Deleting %s (%s)%n", file.getName(), file.getId());
+            drive.files()
+                .delete(file.getId())
+                .setSupportsTeamDrives(true)
+                .execute();
+        } catch (IOException e) {
+            listener.error("Error deleting file", e);
+        }
     }
 
 }
