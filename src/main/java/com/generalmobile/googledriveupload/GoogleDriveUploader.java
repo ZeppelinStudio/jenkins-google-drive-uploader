@@ -21,6 +21,7 @@ import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
 import java.io.File;
@@ -37,7 +38,8 @@ public final class GoogleDriveUploader extends Recorder {
     private final String credentialsId;
     private final String driveFolderName;
     private final String uploadFolder;
-    private final String userMail;
+    private String sharedDriveName = "";
+    private String userMail = "";
     private static HttpTransport httpTransport;
 
     static {
@@ -49,13 +51,21 @@ public final class GoogleDriveUploader extends Recorder {
     }
     
     @DataBoundConstructor
-    public GoogleDriveUploader(String credentialsId, String driveFolderName, String uploadFolder, String userMail) {
+    public GoogleDriveUploader(String credentialsId,  String driveFolderName, String uploadFolder, String userMail) {
         this.credentialsId = checkNotNull(credentialsId);
         this.driveFolderName = checkNotNull(driveFolderName);
         this.uploadFolder = checkNotNull(uploadFolder);
-        this.userMail = checkNotNull(userMail);
     }
 
+    @DataBoundSetter
+    public void setUserMail(String userMail) {
+        this.userMail = checkNotNull(userMail);
+    }
+    
+    @DataBoundSetter
+    public void setSharedDriveName(String sharedDriveName) {
+        this.sharedDriveName = checkNotNull(sharedDriveName);
+    }
 
     public FormValidation doCheckUserMail(@QueryParameter String value) {
         return FormValidation.error("Not a number");
@@ -69,6 +79,10 @@ public final class GoogleDriveUploader extends Recorder {
 
     }
 
+    public String getSharedDriveName() {
+        return sharedDriveName;
+    }
+    
     public String getUploadFolder() {
         return uploadFolder;
     }
@@ -81,8 +95,6 @@ public final class GoogleDriveUploader extends Recorder {
         return driveFolderName;
     }
 
-
-
     @Override
     @SuppressFBWarnings
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
@@ -90,10 +102,7 @@ public final class GoogleDriveUploader extends Recorder {
 
         try {
             listener.getLogger().println("Google Drive Uploading Plugin Started.");
-            GoogleDriveManager driveManager = new GoogleDriveManager(getDriveService(), listener);
-
             String workspace = Objects.requireNonNull(build.getWorkspace()).getRemote();
-
             if (uploadFolder.length() > 0) {
                 if (uploadFolder.startsWith("$")) {
                     workspace += "/" + build.getEnvironment(listener).get(uploadFolder.replace("$", ""));
@@ -102,7 +111,13 @@ public final class GoogleDriveUploader extends Recorder {
                 }
             }
             listener.getLogger().println("Uploading folder: " + workspace);
-            driveManager.uploadFolder(new File(workspace), getDriveFolderName(), userMail);
+            if ( sharedDriveName.isEmpty()) {
+                GoogleDriveManager driveManager = new GoogleDriveManager(getDriveService(), listener);
+                driveManager.uploadFolder(new File(workspace), getDriveFolderName(), userMail);
+            } else {
+                SharedDriveManager driveManager = new SharedDriveManager(getDriveService(), sharedDriveName, listener);
+                driveManager.uploadFolderToSharedDrive(new File(workspace), getDriveFolderName());
+            }
         } catch (GeneralSecurityException e) {
             build.setResult(Result.FAILURE);
             return false;
@@ -131,8 +146,6 @@ public final class GoogleDriveUploader extends Recorder {
     private String getCredentialsId() {
         return credentialsId;
     }
-
-
 
     @Override
     public BuildStepMonitor getRequiredMonitorService() {

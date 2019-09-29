@@ -16,6 +16,7 @@ Create an HPI file to install in Jenkins (HPI file will be in
 ![sample_image](assets/jenkins-drive-uploader.png)
 
 # Usage from Jenkins Job DSL
+For uploading to My Drive
 
         job("my_job") {
             ...
@@ -28,6 +29,21 @@ Create an HPI file to install in Jenkins (HPI file will be in
                 }
             }
         }    
+        
+For uploading to Shared drives
+
+        job("my_job") {
+            ...
+            publishers {
+                googleDriveUploader {
+                    credentialsId('jenkins-211812')
+                    sharedDriveName('My-Shared-Drive-Name')
+                    driveFolderName('my_driver_folder')
+                    uploadFolder('folder_to_upload ')
+                }
+            }
+        }    
+        
 
 # Thanks
 
