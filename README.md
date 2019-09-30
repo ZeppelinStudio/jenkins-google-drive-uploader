@@ -60,7 +60,7 @@ For uploading to Shared drives
         googleDriveUpload credentialsId: 'jenkins-211812',
                 sharedDriveName: 'My-Shared-Drive-Name',
                 driveFolderName: 'my_driver_folder', 
-                uploadFolder: 'folder_to_upload'
+                uploadFolder: 'target/**/*.pdf, docs/*.pdf'
     }        
 
 # Thanks

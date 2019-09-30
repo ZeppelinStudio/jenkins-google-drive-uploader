@@ -9,6 +9,7 @@ import com.google.jenkins.plugins.credentials.domains.DomainRequirementProvider;
 import com.google.jenkins.plugins.credentials.domains.RequiresDomain;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotCredentials;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -22,6 +23,9 @@ import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
 import jenkins.tasks.SimpleBuildStep;
+import jnr.posix.util.Finder;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.apache.oro.io.GlobFilenameFilter;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -29,8 +33,24 @@ import org.kohsuke.stapler.QueryParameter;
 
 import javax.annotation.Nonnull;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -112,27 +132,52 @@ public final class GoogleDriveUploader extends Recorder implements SimpleBuildSt
         }
         try {
             listener.getLogger().println("Google Drive Uploading Plugin Started.");
-            File  uploadFile = new File(workspace.toURI());
-            if (uploadFolder.length() > 0) {
-                if (uploadFolder.startsWith("$")) {
-                    uploadFile = new File(uploadFile, run.getEnvironment(listener).get(uploadFolder.replace("$", "")));
-                } else {
-                    uploadFile = new File(uploadFile, uploadFolder);
-                }
-            }
+            Set<Path> uploadPaths = getUploadFiles(Paths.get(workspace.toURI()) , uploadFolder, run.getEnvironment(listener));
             listener.getLogger().println("Uploading folder: " + workspace);
             if ( sharedDriveName.isEmpty()) {
                 GoogleDriveManager driveManager = new GoogleDriveManager(getDriveService(), listener);
-                driveManager.uploadFolder(uploadFile, getDriveFolderName(), userMail);
+                for (Path uploadFilePath: uploadPaths) {
+                    driveManager.uploadFolder(uploadFilePath.toFile(), getDriveFolderName(), userMail);
+                }
             } else {
                 SharedDriveManager driveManager = new SharedDriveManager(getDriveService(), sharedDriveName, listener);
-                driveManager.uploadFolderToSharedDrive(uploadFile, getDriveFolderName());
+                for (Path uploadFilePath: uploadPaths) {
+                    driveManager.uploadFolderToSharedDrive(uploadFilePath.toFile(), getDriveFolderName());
+                }
             }
         } catch (GeneralSecurityException e) {
             run.setResult(Result.FAILURE);
         }
     }
-    
+
+    static protected Set<Path> getUploadFiles(@Nonnull final Path rootPath, @Nonnull String uploadFolderPatterns, @Nonnull final EnvVars env) throws IOException {
+        Set<Path> uploadFilePaths = new HashSet<Path>();
+        if (!uploadFolderPatterns.isEmpty()){
+            String[] uploadFilePatterns = env.expand(uploadFolderPatterns).split("\\s*,\\s*");
+            for (String uploadFilePattern: uploadFilePatterns){
+                PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + rootPath.toString() + File.separator + uploadFilePattern);
+                Files.walkFileTree(rootPath, new SimpleFileVisitor<Path>() {
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                        if (pathMatcher.matches(dir)) {
+                            uploadFilePaths.add(dir);
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                    @Override
+                    public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)  {
+                        if (pathMatcher.matches(path)) {
+                            uploadFilePaths.add(path);
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
+        } else {
+            uploadFilePaths.add(rootPath);
+        }
+        return uploadFilePaths;
+    }
+
     private Drive getDriveService() throws GeneralSecurityException {
         return new Drive.Builder(httpTransport, new JacksonFactory(), getAuthorizeCredentials())
             .setApplicationName(APPLICATION_NAME)
