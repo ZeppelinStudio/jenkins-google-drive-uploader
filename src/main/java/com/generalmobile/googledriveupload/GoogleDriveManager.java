@@ -11,7 +11,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.Permission;
 import com.google.common.base.Joiner;
-import hudson.model.BuildListener;
+import hudson.model.TaskListener;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,7 +21,7 @@ import java.util.Optional;
 
 class GoogleDriveManager extends ManagerBase {
     
-    GoogleDriveManager(final Drive driveService, final BuildListener listener) {
+    GoogleDriveManager(final Drive driveService, final TaskListener listener) {
         super(driveService, listener);
     }
 

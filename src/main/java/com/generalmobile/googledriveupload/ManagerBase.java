@@ -11,7 +11,7 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveRequest;
 import com.google.api.services.drive.model.File;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.model.BuildListener;
+import hudson.model.TaskListener;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -24,14 +24,14 @@ public abstract class ManagerBase {
     private static final int MB = 0x100000;
     
     protected final Drive drive;
-    protected final BuildListener listener;
+    protected final TaskListener listener;
 
     protected abstract Optional<File> findInFolderByQuery(final String query);
     protected abstract File createNewFolder(final File destFolder, final String name);
     protected abstract DriveRequest<File> createNewFileRequest(final File destFolder, final java.io.File source) throws IOException;
     protected abstract DriveRequest<File> createUpdateFileRequest(final File existingFile, final File destFolder, final java.io.File source) throws IOException;
     
-    ManagerBase(final Drive driveService, final BuildListener listener) {
+    ManagerBase(final Drive driveService, final TaskListener listener) {
         this.drive = driveService;
         this.listener = listener;
     }

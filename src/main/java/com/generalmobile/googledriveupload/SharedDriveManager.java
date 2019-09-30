@@ -13,7 +13,7 @@ import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.TeamDrive;
 import com.google.api.services.drive.model.TeamDriveList;
-import hudson.model.BuildListener;
+import hudson.model.TaskListener;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,7 +25,7 @@ import java.util.Optional;
 public class SharedDriveManager extends ManagerBase {
     protected TeamDrive teamDrive;
 
-    SharedDriveManager(final Drive driveService, final String sharedDriveName, final BuildListener listener) throws GeneralSecurityException {
+    SharedDriveManager(final Drive driveService, final String sharedDriveName, final TaskListener listener) throws GeneralSecurityException {
         super(driveService, listener);
         teamDrive = findSharedDrive(sharedDriveName).
             orElseThrow(() -> new GeneralSecurityException("Could not find the shared drive " + sharedDriveName));

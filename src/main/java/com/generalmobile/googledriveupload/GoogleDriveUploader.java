@@ -10,29 +10,32 @@ import com.google.jenkins.plugins.credentials.domains.RequiresDomain;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotCredentials;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
 import hudson.model.Result;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.FormValidation;
+import jenkins.tasks.SimpleBuildStep;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @RequiresDomain(value = DriveScopeRequirement.class)
-public final class GoogleDriveUploader extends Recorder {
+public final class GoogleDriveUploader extends Recorder implements SimpleBuildStep {
 
     public static final String APPLICATION_NAME = "Jenkins drive uploader";
     private final String credentialsId;
@@ -79,6 +82,10 @@ public final class GoogleDriveUploader extends Recorder {
 
     }
 
+    public String getCredentialsId() {
+        return credentialsId;
+    }
+    
     public String getSharedDriveName() {
         return sharedDriveName;
     }
@@ -94,36 +101,36 @@ public final class GoogleDriveUploader extends Recorder {
     public String getDriveFolderName() {
         return driveFolderName;
     }
-
+    
     @Override
     @SuppressFBWarnings
-    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
-            throws InterruptedException, IOException {
-
+    public void perform(  @Nonnull  final Run<?, ?> run, @Nonnull final FilePath workspace,
+        @Nonnull final  Launcher launcher, @Nonnull final TaskListener listener) throws InterruptedException, IOException {
+ 
+        if ((run.getResult() == Result.FAILURE || run.getResult() == Result.ABORTED) ) {
+            return;
+        }
         try {
             listener.getLogger().println("Google Drive Uploading Plugin Started.");
-            String workspace = Objects.requireNonNull(build.getWorkspace()).getRemote();
+            File  uploadFile = new File(workspace.toURI());
             if (uploadFolder.length() > 0) {
                 if (uploadFolder.startsWith("$")) {
-                    workspace += "/" + build.getEnvironment(listener).get(uploadFolder.replace("$", ""));
+                    uploadFile = new File(uploadFile, run.getEnvironment(listener).get(uploadFolder.replace("$", "")));
                 } else {
-                    workspace += "/" + uploadFolder;
+                    uploadFile = new File(uploadFile, uploadFolder);
                 }
             }
             listener.getLogger().println("Uploading folder: " + workspace);
             if ( sharedDriveName.isEmpty()) {
                 GoogleDriveManager driveManager = new GoogleDriveManager(getDriveService(), listener);
-                driveManager.uploadFolder(new File(workspace), getDriveFolderName(), userMail);
+                driveManager.uploadFolder(uploadFile, getDriveFolderName(), userMail);
             } else {
                 SharedDriveManager driveManager = new SharedDriveManager(getDriveService(), sharedDriveName, listener);
-                driveManager.uploadFolderToSharedDrive(new File(workspace), getDriveFolderName());
+                driveManager.uploadFolderToSharedDrive(uploadFile, getDriveFolderName());
             }
         } catch (GeneralSecurityException e) {
-            build.setResult(Result.FAILURE);
-            return false;
+            run.setResult(Result.FAILURE);
         }
-
-        return true;
     }
     
     private Drive getDriveService() throws GeneralSecurityException {
@@ -143,16 +150,12 @@ public final class GoogleDriveUploader extends Recorder {
         return DomainRequirementProvider.of(getClass(), DriveScopeRequirement.class);
     }
 
-    private String getCredentialsId() {
-        return credentialsId;
-    }
-
     @Override
     public BuildStepMonitor getRequiredMonitorService() {
         return BuildStepMonitor.NONE;
     }
-
-    @Extension
+    
+    @Extension @Symbol("googleDriveUpload")
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
         @Override

@@ -15,35 +15,53 @@ Create an HPI file to install in Jenkins (HPI file will be in
 
 ![sample_image](assets/jenkins-drive-uploader.png)
 
-# Usage from Jenkins Job DSL
+# Usage with [Jenkins Job DSL Plugin](https://github.com/jenkinsci/job-dsl-plugin)
 For uploading to My Drive
 
-        job("my_job") {
-            ...
-            publishers {
-                googleDriveUploader {
-                    credentialsId('jenkins-211812')
-                    driveFolderName('my_driver_folder')
-                    uploadFolder('folder_to_upload ')
-                    userMail('me@localtest.me')
-                }
+    job("my_job") {
+        ...
+        publishers {
+            googleDriveUploader {
+                credentialsId('jenkins-211812')
+                driveFolderName('my_driver_folder')
+                uploadFolder('folder_to_upload ')
+                userMail('me@localtest.me')
             }
-        }    
+        }
+    }    
         
 For uploading to Shared drives
 
-        job("my_job") {
-            ...
-            publishers {
-                googleDriveUploader {
-                    credentialsId('jenkins-211812')
-                    sharedDriveName('My-Shared-Drive-Name')
-                    driveFolderName('my_driver_folder')
-                    uploadFolder('folder_to_upload ')
-                }
+    job("my_job") {
+        ...
+        publishers {
+            googleDriveUploader {
+                credentialsId('jenkins-211812')
+                sharedDriveName('My-Shared-Drive-Name')
+                driveFolderName('my_driver_folder')
+                uploadFolder('folder_to_upload ')
             }
-        }    
+        }
+    }    
         
+# Usage in [Jenkins pipeline](https://jenkins.io/doc/book/pipeline/)
+For uploading to My Drive
+
+    steps {
+        googleDriveUpload credentialsId: 'jenkins-211812',
+                driveFolderName: 'my_driver_folder', 
+                uploadFolder: 'folder_to_upload',
+                userMail: 'me@localtest.me'
+    }        
+
+For uploading to Shared drives
+
+    steps {
+        googleDriveUpload credentialsId: 'jenkins-211812',
+                sharedDriveName: 'My-Shared-Drive-Name',
+                driveFolderName: 'my_driver_folder', 
+                uploadFolder: 'folder_to_upload'
+    }        
 
 # Thanks
 
