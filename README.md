@@ -63,6 +63,28 @@ For uploading to Shared drives
                 uploadFolder: 'target/**/*.pdf, docs/*.pdf'
     }        
 
+# Setting up Google Credentials 
+
+1. Goto : https://console.developers.google.com/apis
+
+1. At top create a new or select project existing project 
+
+1. Dashboard 
+
+    Enable APIs and services
+    select Google Drive API, enable
+
+1.  Credentials
+
+    Create credentials , select Service account key  
+    Select new service account  
+    Set name e.g. : jenkins-test-drive-uploader 
+    Set Role : Storage - Storage Object Viewer (can be removed later but at least 1 role needs to be selected to create credential)  
+    Key type : select json  
+    A json will be streamed back.   
+    
+Use the json to setup Google credentials in Jenkins.
+
 # Thanks
 
 [Marko Stipanov](https://github.com/mstipanov) for creating [Jenkins Google Driver Uploader](https://github.com/mstipanov/google-drive-upload-plugin). This helps us a lot to create this plugin.
