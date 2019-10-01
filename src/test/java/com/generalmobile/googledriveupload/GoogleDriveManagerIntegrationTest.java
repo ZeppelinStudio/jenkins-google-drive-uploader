@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.LogManager;
@@ -81,7 +82,7 @@ public class GoogleDriveManagerIntegrationTest {
     
     @After
     public void cleanupDrive() {
-        googleDriveManager.cleanup(GOOGLE_DRIVE_FOLDER_MIMETYPE, Arrays.asList("subdir", driveFolderName));
+        googleDriveManager.cleanup(GOOGLE_DRIVE_FOLDER_MIMETYPE, Arrays.asList("subdir", "subfolder", driveFolderName));
         googleDriveManager.cleanup("text/plain", Arrays.asList("test_file_1.txt", "test_file_2.txt"));
     }
     
@@ -98,15 +99,20 @@ public class GoogleDriveManagerIntegrationTest {
     }
     
     @Test
-    public void uploadSingleFile() {
+    public void uploadFolder_withSourceSingleFile() {
         File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
         googleDriveManager.uploadFolder(fileToUpload, driveFolderName, emailUser);
     }
 
     @Test
-    public void uploadDir() {
+    public void uploadFolder_withSourceDir() {
         File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir").getFile());
         googleDriveManager.uploadFolder(fileToUpload, driveFolderName, emailUser);
     }
-    
+
+    @Test
+    public void uploadFolder_withMultiLevelDriveFolder() throws GeneralSecurityException {
+        File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
+        googleDriveManager.uploadFolder(fileToUpload , driveFolderName + "/subfolder", emailUser);
+    }
 }

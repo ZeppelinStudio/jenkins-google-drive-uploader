@@ -97,14 +97,20 @@ public class SharedDriveManagerIntegrationTest {
     }
 
     @Test
-    public void uploadSingleFileToTeamDrive() throws GeneralSecurityException {
+    public void uploadFolderToSharedDrive_withSourceSingleFile() throws GeneralSecurityException {
         File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
-        googleSharedDriveManager.uploadFolderToSharedDrive(fileToUpload, driveFolderName);
+        googleSharedDriveManager.uploadFolderToSharedDrive(fileToUpload , driveFolderName);
     }
     
     @Test
-    public void uploadDirToTeamDrive() throws GeneralSecurityException {
+    public void uploadFolderToSharedDrive_withSourceDir() throws GeneralSecurityException {
         File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir").getFile());
         googleSharedDriveManager.uploadFolderToSharedDrive(fileToUpload, driveFolderName);
+    }
+
+    @Test
+    public void uploadFolderToSharedDrive_withMultiLevelDriveFolder() throws GeneralSecurityException {
+        File fileToUpload = new File(this.getClass().getClassLoader().getResource("subdir/test_file_1.txt").getFile());
+        googleSharedDriveManager.uploadFolderToSharedDrive(fileToUpload , driveFolderName + "/subfolder");
     }
 }

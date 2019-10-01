@@ -32,8 +32,7 @@ public class SharedDriveManager extends ManagerBase {
     }
 
     void uploadFolderToSharedDrive(java.io.File source, String destFolderName) throws GeneralSecurityException {
-        File destFolder = findDestFolderInSharedDrive(destFolderName)
-            .orElseGet(() -> createNewFolder(teamDrive.getName(), teamDrive.getId(), destFolderName));
+        File destFolder = findDestFolderInSharedDrive(destFolderName);
         if (destFolder == null ) {
             throw new GeneralSecurityException("Could not create " + destFolderName);
         }
@@ -115,12 +114,23 @@ public class SharedDriveManager extends ManagerBase {
         return Optional.empty();
     }
 
-    private Optional<File> findDestFolderInSharedDrive(final String destFolderName) {
-        listener.getLogger().printf("Searching for %s in %s (%s)%n", destFolderName, teamDrive.getName(), teamDrive.getId());
-        return findInFolderByQuery(String.format("mimeType='%s' and name='%s' and trashed=false",
-            GOOGLE_DRIVE_FOLDER_MIMETYPE, destFolderName));
+   private File findDestFolderInSharedDrive(final String destFolderName) throws GeneralSecurityException {
+        String[] destinationFolders = destFolderName.split("/");
+        // Find or create to level folder
+        listener.getLogger().printf("Searching for %s in %s (%s)%n", destinationFolders[0], teamDrive.getName(), teamDrive.getId());
+        File destFolder = findInFolderByQuery(String.format("mimeType='%s' and name='%s' and trashed=false",
+            GOOGLE_DRIVE_FOLDER_MIMETYPE, destinationFolders[0]))
+            .orElseGet(() -> createNewFolder(teamDrive.getName(), teamDrive.getId(), destinationFolders[0]));
+        // Find or create additional subdirs
+        for(int i=1; i< destinationFolders.length && destFolder != null ; i++) {
+            String subFolderName = destinationFolders[i]; 
+            File newParentFolder = destFolder;
+            destFolder = findFolderInFolder(newParentFolder, subFolderName)
+                .orElseGet(() -> createNewFolder(newParentFolder.getName(), newParentFolder.getId(), subFolderName));
+        }
+        return destFolder;
     }
-
+    
     private  File createNewFolder(final String parentName, String parentId, final String name){
         // Need to create the folder...
         File fileMetadata = new File();

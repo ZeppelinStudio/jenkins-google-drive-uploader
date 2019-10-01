@@ -27,7 +27,7 @@ class GoogleDriveManager extends ManagerBase {
 
     void uploadFolder(java.io.File source, String destFolderName, String userMail) {
         listener.getLogger().printf("userMail %s%n", userMail);
-        File destFolder = controlParent(destFolderName, userMail);
+        File destFolder = findDestFolderInDrive(destFolderName, userMail);
         if (destFolder != null) {
             uploadFile(source, destFolder);
         }
@@ -98,6 +98,20 @@ class GoogleDriveManager extends ManagerBase {
         return file;
     }
 
+    private File findDestFolderInDrive(String destFolderName, String userMail) {
+        String[] destinationFolders = destFolderName.split("/");
+        File destFolder = controlParent(destinationFolders[0], userMail);
+        // Find or create additional subdirs
+        for (int i = 1; i < destinationFolders.length && destFolder != null; i++) {
+            String subFolderName = destinationFolders[i];
+            File newParentFolder = destFolder;
+            destFolder = findFolderInFolder(newParentFolder, subFolderName)
+                .orElseGet(() -> createNewFolder(Collections.singletonList(newParentFolder.getName()), Collections.singletonList(newParentFolder.getId()),
+                    subFolderName));
+        }
+        return destFolder;
+    }
+    
     private File controlParent(String destFolderName, String userMail) {
         String[] mails = userMail.split(";");
         try {

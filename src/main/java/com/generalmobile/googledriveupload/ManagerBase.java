@@ -14,6 +14,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.TaskListener;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Objects;
@@ -66,13 +67,13 @@ public abstract class ManagerBase {
         }
     }
 
-    private Optional<File> findFolderInFolder(File parentFolder, String name) {
+    protected Optional<File> findFolderInFolder(File parentFolder, String name) {
         listener.getLogger().printf("Searching for %s in %s (%s)%n", name, parentFolder.getName(), parentFolder.getId());
         return findInFolderByQuery(String.format("mimeType='%s' and name='%s' and '%s' in parents and trashed=false",
             GOOGLE_DRIVE_FOLDER_MIMETYPE, name, parentFolder.getId()));
     }
 
-    private Optional<File> findInFolder(File parentFolder, String name) {
+    protected Optional<File> findInFolder(File parentFolder, String name) {
         listener.getLogger().printf("Searching for %s in %s (%s)%n", name, parentFolder.getName(), parentFolder.getId());
         return findInFolderByQuery(String.format("name='%s' and '%s' in parents and trashed=false",
             name, parentFolder.getId()));
