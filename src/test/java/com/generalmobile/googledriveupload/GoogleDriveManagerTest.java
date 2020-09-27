@@ -136,7 +136,7 @@ public class GoogleDriveManagerTest {
             "Searching for " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Creating new File " + fileToUpload.getName() + " in " + FOLDER_NAME + " (" + FOLDER_ID + ")",
             "Start uploading " + fileToUpload.getAbsolutePath());
-        mockBuildListenerHelper.assertErrors(fileToUpload.getAbsolutePath() + " (No such file or directory)");
+        mockBuildListenerHelper.assertErrors(fileToUpload.getAbsolutePath() + " (The system cannot find the file specified)");
     }
 
     @Test

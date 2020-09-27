@@ -33,7 +33,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>google-oauth-plugin</artifactId>
-            <version>0.9</version>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>

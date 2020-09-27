@@ -68,7 +68,7 @@ public class MockBuildListenerHelper {
     }
 
     public void assertLoggingEqual(final String... expectedlogLines) {
-        assertEquals(Joiner.on("\n").join(expectedlogLines) + "\n", loggerOutput.toString());
+        assertEquals(Joiner.on(System.lineSeparator()).join(expectedlogLines) + System.lineSeparator(), loggerOutput.toString());
     }
 
     public void assertNoErrors() {
@@ -76,6 +76,6 @@ public class MockBuildListenerHelper {
     }
 
     public void assertErrors(final String... expectedErrors) {
-        assertEquals(Joiner.on("\n").join(expectedErrors), Joiner.on("\n").join(errors.remove()));
+        assertEquals(Joiner.on(System.lineSeparator()).join(expectedErrors), Joiner.on(System.lineSeparator()).join(errors.remove()));
     }
 }
