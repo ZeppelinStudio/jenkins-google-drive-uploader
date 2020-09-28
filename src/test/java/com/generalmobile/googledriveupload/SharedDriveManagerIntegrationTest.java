@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.Properties;
 import java.util.logging.LogManager;
 
-import static com.generalmobile.googledriveupload.GoogleDriveUploader.APPLICATION_NAME;
 import static com.generalmobile.googledriveupload.ManagerBase.GOOGLE_DRIVE_FOLDER_MIMETYPE;
 
 @Category(GoogleDriveIntegrationTest.class)
@@ -72,7 +71,7 @@ public class SharedDriveManagerIntegrationTest {
         HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         googleSharedDriveManager = new SharedDriveManager(
             new Drive.Builder(httpTransport, new JacksonFactory(), credential)
-                .setApplicationName(APPLICATION_NAME)
+                .setApplicationName(GoogleDriveUploaderExecution.APPLICATION_NAME)
                 .build(), 
             sharedDriveName,
             mockBuildListener);

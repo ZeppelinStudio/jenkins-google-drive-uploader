@@ -29,7 +29,6 @@ import static com.generalmobile.googledriveupload.DriveMockHttpTransport.BatchCr
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesCreateRequest;
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesListRequest;
 import static com.generalmobile.googledriveupload.DriveMockHttpTransport.FilesUploadRequest;
-import static com.generalmobile.googledriveupload.GoogleDriveUploader.APPLICATION_NAME;
 import static org.mockito.Mockito.mock;
 
 public class GoogleDriveManagerTest {
@@ -68,7 +67,7 @@ public class GoogleDriveManagerTest {
         Credential mockCredential = mock(Credential.class);
         googleDriveManager = new GoogleDriveManager(
             new Drive.Builder(mockHttpTransport, new JacksonFactory(), mockCredential)
-                .setApplicationName(APPLICATION_NAME)
+                .setApplicationName(GoogleDriveUploaderExecution.APPLICATION_NAME)
                 .build(),
             mockBuildListener);
     }
