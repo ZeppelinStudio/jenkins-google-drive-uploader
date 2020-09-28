@@ -231,6 +231,7 @@ public final class GoogleDriveUploader extends Recorder implements SimpleBuildSt
                 }
             } catch (Exception e) {
                 listener.error("Inner error : " + e.getMessage() != null ? e.getMessage() : " empty?");
+                throw e;
             }
 
             return (Void) null;
